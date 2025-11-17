@@ -1,0 +1,298 @@
+\section{Ablations}
+
+% In this section, we will analyze the significance of prompt style (Section \ref{ss:prompt_effect}), effect of conversation on other datasets (Section \ref{ss:other_data}), the efficient way to utilize synthetic data (Section \ref{ss:data_prep}), and comparison with other synthetic data generation approach (Section \ref{ss:comp_rephrase}). We will also discuss the effect of input context length for conversation generation (Section \ref{ss:context_len}) and navigate ways to assess the quality of the conversation (Section \ref{ss:quality_assess}).
+
+% In this section, we analyze the significance of prompt styles, scalability on  other datasets, the efficient way to utilize synthetic data, and comparison with other synthetic data generation approach. We also discuss the effect of input context length for conversation generation (Appendix \ref{ss:context_len}) and navigate ways to assess the quality of the conversation (Appendix \ref{ss:quality_assess}).
+
+% \shrimai{Points to make
+% \begin{itemize}
+%     \item Show that conversational styles are comparable to original OWM
+%     \item show that conversational styles are better than rephrase and CoT
+% \end{itemize}}
+
+% \subsection{Does the Prompt Style matter?}
+% We measure the 
+
+% \subsection{Does the Prompt Style matter?}\label{ss:prompt_effect}
+
+
+\paragraph{Does the Prompt Style matter?} \label{ss:prompt_effect}
+To evaluate the impact of prompt styles, we conduct experiment by training with conversations from seven different styles. From \autoref{tab:7b_owm_4b}, we observe improvement across all tasks using six conversational styles. However, our experiment with \tp conversations yield relatively equivalent or worse performance compared to the raw data (\autoref{tab:7b_tp}). 
+
+
+
+\begin{table*}[h!]
+\begin{center}
+\resizebox{\textwidth}{!}{% 
+\begin{tabular}{@{}lccccccc@{}}
+\toprule
+\textbf{Dataset} & \textbf{Style} & \textbf{GSM8K} & \textbf{MATH}	& \textbf{\shortstack{MMLU-\\STEM}} & \textbf{\shortstack{MMLU}} & \textbf{\shortstack{\textsc{General Reasoning}\\(Avg)}}&\textbf{Avg-All}\\\toprule
+\owma-4B &   Raw & 12.96	&4.92	&39.39	&45.91	&52.90&29.17\\ \midrule
+% & \mawps           & \textbf{69.83}         & 66.83            \\ 
+\ourdata-4B & \tp & 13.50	&4.52	&37.93	&45.25	&53.21&29.12\\
+\toprule
+\end{tabular}
+}
+\end{center}
+\vspace{-2mm}
+\caption{\textbf{\tp prompt style vs Raw data.} Continuous pretraining with \tp conversations does not provide gain over raw data compared to other conversational styles.}
+\label{tab:7b_tp}
+\end{table*}
+
+% This outcome can be attributed to the nature of the \tp conversation style. Upon reviewing the generated conversations, we hypothesize that the relatively lower performance is due to the surface-level engagement between the two professors. In this setup, both participants assume that the other already has sufficient knowledge as they are the domain experts, leading to less detailed discussions. This contrasts with other styles where there is either a clear knowledge gap between participants (\lk, \ts, \intr) or both participants being non-experts are actively analyzing and solving the problem (\ps, \deb, \tss), forcing participants to explain concepts in more depth, which results in expanded dialogues with complementary explanations and reasoning.
+
+This outcome can be attributed to the nature of the \tp conversation style. Upon reviewing the generated conversations, we hypothesize that the relatively lower performance is due to the zero-knowledge gap between participants. In this setup, both participants assume that the other already has sufficient knowledge as they are the domain experts, leading to surface-level engagement and less detailed discussions.
+
+\begin{wrapfigure}[16]{r}{0.5\textwidth}
+    \vspace{-6mm}
+    \centering    
+    \includegraphics[width=\textwidth]{figures/bleu_rogue.pdf}
+    \caption{\textbf{Similarity between Raw Text and Synthetic Dialogues.} The \tp style exhibits greater similarity to raw text, while \lk shows the lowest similarity due to its richer context with more details and explanations.} 
+    \label{fig:bleu_rouge}
+     \vspace{-1mm}
+\end{wrapfigure}
+
+To further investigate, we measure the BLEU and ROUGE scores between a raw text and the corresponding conversation, as shown in \autoref{fig:bleu_rouge}, and find that the \tp style exhibits the highest similarity to raw text. This implies that \tp dialogues do not fully exploit the potential of the generation model to introduce new reasoning or breakdowns of complex problems, aligning with our qualitative observation that the professors are not engaging in deeper analysis of concepts. 
+
+
+
+This contrasts with other conversational styles where there is either a clear knowledge gap between participants (\lk, \ts, \intr), forcing one to explain concepts in more depth, or both participants, being non-experts are actively analyzing and solving the problem (\ps, \deb, \tss) which results in expanded dialogues with complementary explanations and reasoning. In the latter case, the lack of expertise creates an implicit knowledge gap---instead of one participant being more knowledgeable, both non-experts collaborate to bridge their shared knowledge gap. As depicted in \autoref{fig:bleu_rouge}, the \lk style, which features the greatest knowledge imbalance between participants, has the lowest BLEU and ROUGE scores. This supports our hypothesis that a larger information gap encourages the knowledgeable participant to explain concepts thoroughly, leading to more explicit and detailed conversations. 
+
+% We further analyzed the BLEU and ROUGE scores for all conversation styles, as shown in \autoref{fig:bleu_rouge}, and found that the \tp style exhibits the highest similarity to raw text. This suggests that \tp conversations do not fully exploit the potential of the generation model to introduce new reasoning or breakdowns of complex problems, aligning with our qualitative observation that the professors are not engaging in deeper analysis of concepts. In contrast, the \lk style, which features the greatest knowledge imbalance between participants, has the lowest BLEU and ROUGE scores. This supports our hypothesis that a larger information gap encourages the knowledgeable participant to explain concepts thoroughly, leading to more explicit, and detailed conversations. 
+
+Relating these insights to our findings in \autoref{tab:7b_owm_4b}, we see that incorporating explicit knowledge gaps in dialogues is beneficial for \mmlu and general reasoning tasks. Conversely, collaborative problem solving, to close the implicit knowledge gap, %—where participants engage in reasoning together, often debating or complementing one another's ideas—
+is crucial for improving performance on math tasks. This highlights a key characteristic of high-quality math data---merely breaking down the problem is insufficient for effective math reasoning. Instead, dynamic knowledge exchange and analysis within the dialogues are essential to achieve maximum improvement in math reasoning.
+
+% Moreover, incorporating knowledge gap in dialogues is particularly beneficial for \mmlu and general reasoning tasks (\autoref{tab:7b_owm_4b}). In contrast, collaborating problem solving, where participants jointly deconstruct and analyze the problem, is advantageous for improving performance on math tasks.
+
+
+
+% In this case, the knowledge gap encourages the knowledgeable participant to explain concepts thoroughly, which enhances the quality of the generated synthetic data and, subsequently, the model's reasoning ability.
+
+
+
+% \subsection{Does Conversation benefit other datasets?}\label{ss:other_data}
+
+
+\paragraph{Does Conversation benefit other datasets?} \label{ss:other_data}
+Our experiments so far have utilized \owm as the seed corpus for generating synthetic conversations and training  \llm. \owm is predominantly a mathematical corpus collected from mathematical web pages that can contain noisy web contexts. Generating synthetic conversations for such noisy contexts upsamples high-quality data and hence we observe a huge gain in performance with high-quality conversations. However, it is yet to be explored whether \ourapproach will work on high-quality datasets such as books or papers. To investigate this, we consider a new seed corpus, \mathpile \citep{wang2023mathpile}, that consists of 9.3B tokens extracted from high-quality data sources such as ArXiv papers, textbooks, StackExchange, Wikipedia, ProofWiki, and \cc pages.
+
+\begin{table*}[ht!]
+\begin{center}
+\resizebox{\textwidth}{!}{% 
+\begin{tabular}{@{}lccccccc@{}}
+\toprule
+\textbf{Dataset} & \textbf{Style} & \textbf{GSM8K} &\textbf{MATH} & \textbf{\shortstack{MMLU-\\STEM}} & \textbf{MMLU}& 	\textbf{\shortstack{\textsc{General Reasoning}\\(Avg)}} & \textbf{Avg-All}\\\toprule
+Pretraining Data & \multirow{2}{*}{Raw} & 9.33	& 4.74	& 37.84	& 45.41	& 53.22 & 28.17\\ 
+\mathpile & & 8.79	&4.96	&	42.82 &49.49	&54.16	&29.35\\\midrule
+\textsc{mind}-\mathpile & \tss & 12.74&	5.74	&43.55&	49.91	&53.98	&\textbf{30.59}\\ 
+\toprule
+\end{tabular}
+}
+\end{center}
+\caption{\textbf{\mathpile vs Synthetic Conversation from \mathpile (\textsc{mind}-\mathpile).} Conversation generated from high-quality raw data further improves the performance of math tasks.}
+\label{fig:mp_exp}
+\vspace{-2mm}
+\end{table*}
+
+By employing $\mathcal{M}$, we generate conversations from raw text with the \tss prompt. Later, we replicate the experiments %with \owma-4B and \ourdata-4B 
+by replacing \owma with \mathpile and \textsc{mind}-\mathpile accordingly. \autoref{fig:mp_exp} shows that \textsc{mind}-\mathpile outperforms the raw counterpart in all three math benchmarks along with specialized knowledge tasks, achieving comparable scores in general reasoning task. In addition, majority of \mathpile data is from ArXiV papers and recent work has found this source ineffective in improving mathematical reasoning \citep{deepseek-math}. We observe the similar trend with \gsm benchmark where training with non-math focused pretraining corpora yields better score than with \mathpile corpus. However, our synthetic conversation on \mathpile rather amplifies the quality of the corpus resulting in 3.95\% %and 2.96\% 
+absolute improvement on \gsm in comparison with raw data. %and pretraining blend respectively. 
+This highlights the superior structured complexity of conversations, which proves particularly effective for multi-hop and mathematical reasoning tasks, over high-quality data from Arxiv papers.% \shrimai{why the claim of high quality books? You only mention Arxiv in the para. Make it concrete and only talk about Arxiv.}.
+
+% \begin{figure}[H]
+%   \centering
+%   \includesvg[width=0.8\columnwidth]{figures/mathpile.svg}
+%   \caption{\textbf{\mathpile vs Synthetic Conversation from \mathpile (Syn-\mathpile).} Conversation improves the performance of math tasks even when the raw data derives from high-quality sources.}
+%   \label{fig:mp_exp}
+% \end{figure}
+
+
+
+% \subsection{Rephrase vs Conversation}\label{ss:comp_rephrase}
+
+\paragraph{Rephrase vs Conversation.}\label{ss:comp_rephrase}
+To assess the significance of \ourapproach over other synthetic data generation approach for math reasoning, we investigate %Web Rephrase Augmented Pretraining (WRAP), introduced by \cite{rephrasing-the-web}. WRAP proposes 
+%a way to upsample high-quality data by 
+rephrasing the raw web text with \llm, introduced by \cite{rephrasing-the-web}. They generate four styles of synthetic data (easy, medium, hard, and Q/A) among which medium style rephrasing produces improvements across many tasks. %In addition, they found maximum gain by combining raw and rephrased data. 
+To maintain consistency among generation quality and training setup, we choose the \owma-4B data and generate rephrases with $\mathcal{M}$ using the highest performing prompt from the paper. We %maintain the same data blend as before and simply replace \owma-4B with Rephrase-\owma-4B or combine both by sampling raw and rephrase data in a 1:1 ratio. Following the previous experimental setup, we take the 7B base model from 700B checkpoint and continuously train with 50B tokens using the new data blend.
+continuously train $\mathcal{C}$ with $\mathcal{D} = \{\mathcal{X} \cup \mathcal{R}_{pt}\}.$ where $\mathcal{X} \in $ \{Rephrase-\owma-4B\}.%, \owma-4B $\cup$ Rephrase-\owma-4B\}.
+%\syeda{Do we want a table with all conversation styles vs rephrase or a chart?}
+
+% \begin{figure}[H]
+%   \centering
+%   \includesvg[width=0.8\columnwidth]{figures/rephrase.svg}
+%   \caption{\textbf{Rephrase vs Conversations.} Continuous training of 7B \llm separately with conversational synthetic data and rephrase shows that conversation is better for mathematical and general reasoning than simple rephrasing.}
+%   \label{fig:rephrase}
+% \end{figure}
+
+% OWM	12.96	4.92	45.91	39.39	52.90	31.22
+% Rephrase-OWM	11.68	5.46	46.17	39.71	53.58	31.32
+% Rephrase-OWM+OWM [1:1]	14.25	6.20	48.74	42.31	53.68	33.04
+% Longest Conversation	25.78	6.30	49.37	42.72	54.86	35.81
+% Conv-Math-Data+OWM [1:1]	21.68	6.14	49.57	42.56	54.50	34.89
+
+
+
+
+\begin{table*}[ht!]
+\begin{center}
+\resizebox{\textwidth}{!}{% 
+\begin{tabular}{@{}lccccccc@{}}
+\toprule
+\textbf{Dataset} & \textbf{GSM8K} &\textbf{MATH} & \textbf{\shortstack{MMLU-\\STEM}} & \textbf{MMLU}& 	\textbf{\shortstack{\textsc{General Reasoning}\\(Avg)}} & \textbf{Avg-All}\\\toprule
+% Pretraining Data & 9.33	& 4.74	& 37.84	& 45.41	& 53.22 & 28.29\\ 
+\owma-4B  & 12.96	&4.92	&39.39	&45.91	&52.90&29.17\\\midrule
+Rephrase-\owma-4B  & 11.68 & 5.46 & 39.71 & 46.17 & 53.58 & 29.22\\\midrule
+% \owma-4B+Rephrase-\owma-4B [1:1] & 14.25	&6.20	&42.31	&48.74	&53.68&	30.72\\\midrule
+\ourdata-4B [Longest Conversation]&  25.78 & 6.30 & 42.72 & 49.37 & 54.86 & 34.08\\
+
+% \owma-4B+\ourdata-4B [1:1]& & 21.68	&6.14	&42.56	&49.57	&54.50	&32.97\\
+\toprule
+\end{tabular}
+}
+\end{center}
+\caption{\textbf{Rephrase vs Conversations.} Continuous training of 7B \llm shows that conversational data is better for mathematical and general reasoning than simple rephrasing.}
+\label{tab:rephrase}
+\vspace{-2mm}
+\end{table*}
+
+%\shrimai{You don't say anything about the OwM + Rephrase case. If this result does not add any value then remove it. You can potentially add it to the next ablation ... and say that raw+syn makes most sense for rephrase case }\syeda{Passed it to the next section}
+As illustrated in \autoref{tab:rephrase}, model pretrained on conversations consistently outperforms those trained on rephrased or raw text across all tasks. %Although combining rephrase with raw text is better than only rephrased data, it still underperforms the model trained with conversations in math reasoning. 
+Interestingly, rephrased data underperforms raw data in benchmarks such as \gsm. This disparity is closely related to the limitations of the rephrasing process. Rephrase adds linguistic variations to the older data, preserving the syntactic meaning of the document, but can not generate semantic/pragmatic variations. Moreover, rephrases are limited to the information in the raw text and unable to inject new knowledge into the data. 
+%Conversational data, by contrast, provides a more dynamic framework. Conversations not only preserve the core information of the context but also enhance it through the interaction of participants, who can introduce different perspectives, ask clarifying questions, and elaborate on reasoning. This allows for the injection of new knowledge in the form of complementary explanations, deeper reasoning, and iterative problem-solving—all crucial components for solving complex reasoning tasks (Appendix \ref{ss:conv_example}). 
+As evidenced in our experiments, while rephrasing offers some benefits, it falls short in addressing the deeper, more complex reasoning challenges that conversational data can resolve. The structured and interactive nature of conversations facilitates a more nuanced understanding of the problem space, making it an effective approach for improving mathematical reasoning of {\llm}s.
+
+% In contrast, conversation can enhance existing context with the perspective and conscience of participants who are discussing about the context. In addition, conversation creates space to inject knowledge in a form of complimentary explanations and reasonings in turns which are essential elements for solving complex reasoning problems (\syeda{add conversation examples}). 
+
+
+% \subsection{Is replacing with Synthetic Data the best option?}\label{ss:data_prep}
+
+
+\paragraph{Is replacing with Synthetic Data the best option?}\label{ss:data_prep}
+Our findings in \autoref{tab:7b_owm} and \autoref{tab:7b_owm_4b} indicate that completely replacing \owm with synthetic data provides the best performance across benchmarks. However, %prior work 
+\cite{rephrasing-the-web} emphasizes the importance of combining real data and synthetic rephrases to achieve consistent improvements across a broader range of tasks---a similar trend we observe in our experiment with rephrased data, as shown in \autoref{tab:7b_comp_data}. To investigate this further, we conduct experiments with four different data combinations using \owma-4B while the $\mathcal{R}_{pt}$ remains constant:
+
+\begin{itemize}[leftmargin=*] 
+\itemsep0em
+\item \textbf{\owma-4B + \ourdata-4B [1:1].} We combine $\mathcal{R}$ and $\mathcal{S}'$ in a 1:1 ratio, ensuring an equal number of tokens to be seen during pretraining from both sources. For the synthetic data, we utilize the \textsc{Longest Conversation}, as this shows the most improvement across tasks (\autoref{tab:7b_owm_4b}). 
+\item \textbf{\owma-4B + \ourdata-4B [Concat].} We concatenate each raw context with all seven synthetic conversations sequentially. 
+\item \textbf{\ourdata-4B [Longest Conversation].} From the seven conversations generated for each context, we select the longest conversation in token count. 
+\item \textbf{\ourdata-4B [All Conversations].} This data incorporates all conversation across all styles. 
+\end{itemize}
+
+
+
+
+
+
+\begin{table*}[h!]
+\begin{center}
+\resizebox{\textwidth}{!}{% 
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+\textbf{Dataset} & \textbf{\gsm} &\textbf{\mathall} & \textbf{\shortstack{\mmlus}} & \textbf{\mmlu}& 	\textbf{\shortstack{\textsc{General Reasoning}\\(Avg)}}&\textbf{Avg-All}\\\toprule
+\owma-4B & 12.96	& 4.92	& 39.39	& 45.91	& 52.90&29.17\\ 
+\owma-14B & 20.47 & 7.24 & 42.82 & 49.49 & 53.95& 32.79\\\midrule
+Rephrase-\owma-4B  & 11.68 & 5.46 & 39.71 & 46.17 & 53.58 & 29.22\\
+\owma-4B+Rephrase-\owma-4B [1:1] & 14.25	&6.20	&42.31	&48.74	&53.68&	30.72\\\midrule
+\owma-4B+\ourdata-4B [1:1] & 21.68 & 6.14 & 42.56 & 49.57 & 54.50&32.97\\ 
+\owma-4B+\ourdata-4B [Concat] & 24.49 & 6.22 & \textbf{43.67} & \textbf{50.46} & 55.10&34.07\\
+\ourdata-4B [Longest Conversation] & 25.78 &	6.30 & 42.72 & 49.37 & 54.86&34.08\\ 
+\ourdata-4B [All Conversations] & \textbf{26.38} & \textbf{7.22} & 42.53 & 50.21 & \textbf{55.41}&\textbf{34.80}\\ 
+\toprule
+\end{tabular}
+}
+\end{center}
+\caption{\textbf{Comparison of 7B \llm trained with raw and combination of synthetic data.} Synthetic conversation outperforms raw data in all combinations. Specifically, combinations of all conversations generated from \owma-4B surpasses the performance of \owma-14B (3.6$\times$ larger corpus) across all tasks, underscoring the superior quality and diversity of the conversations.}
+\label{tab:7b_comp_data}
+\vspace{-2mm}
+\end{table*}
+
+Our finding in \autoref{tab:7b_comp_data} indicates that all combinations provide substantial boost in performance across all tasks. However, for math-centric benchmarks (\gsm and \mathall), training solely with synthetic conversations elicits the best improvements. This is likely as these tasks require complex and multi-step reasoning and conversations are designed to replicate these type of thinking. In parallel, having both raw data and conversation is beneficial for specialized and general purpose reasoning tasks, aligning with the findings in \cite{rephrasing-the-web}. Since synthetic data tends to remove special tags, styles, and code indentations, the inclusion of raw data helps improve the generalizability of {\llm}s across diverse domains. Additionally, to measure the maximum gain we can achieve from conversations for a limited data, we %run another experiment with all synthetic conversations generated from \owma-4B. 
+continuously train $\mathcal{C}$ with all synthetic dialogues generated from \owma-4B.  %Consistent with previous experiments, we kept the input token count constant during training. 
+As shown in \autoref{tab:7b_comp_data}, using conversations generated from \owma-4B, we can outperform the model trained with 3.6$\times$ bigger corpus (\owma-14B) on \gsm, \mmlu and general reasoning tasks while showing comparable performance on other tasks. Inspired by this, we further compare \ourapproach with \dsm \citep{deepseek-math} that extract 120B unique math tokens from \cc (Appendix \ref{ss:dsm}). The results from \autoref{tab:dsm_exp} demonstrate that diverse conversations from \ourapproach based on a small seed corpus can yield comparable math accuracy to the \dsm model. This illustrates the potential to enhance reasoning with limited data by generating synthetic conversations of infinite styles.
+
+% \begin{figure}[H]
+%   \centering
+%   \includesvg[width=0.8\columnwidth]{figures/PT_comparison.svg}
+%   \caption{Training with only synthetic data yields the best results for MMLU.}
+% \end{figure}
+
+
+
+
+
+
+
+% % \subsection{Context Length vs Conversation Quality}\label{ss:context_len}
+
+
+
+% \paragraph{Context Length vs Conversation Quality.}\label{ss:context_len}
+% To generate conversations, we utilize $\mathcal{M}$, which supports input sequences of up to 8K tokens. However, the \owm corpus, composed of mathematical web pages from Common Crawl, often contains documents exceeding this 8K token limit, leading to errors when processing them with the \llm. A straightforward approach is to split these inputs into 8K-token windows, but initial experiments with this method reveal significant drawbacks. Conversations generated from the 8K-token inputs tend to summarize the lengthy context, resulting in a loss of substantial information from the original text. 
+
+% \begin{wrapfigure}[11]{r}{0.45\textwidth}
+%     \vspace{-6mm}
+%     \centering    
+%     \includesvg[width=\textwidth]{figures/context_len.svg}
+%     \caption{With increasing context length the generated conversation length decreases.} 
+%     \label{fig:context_length}
+% \end{wrapfigure}
+% Therefore, we conduct an experiment on 140k samples from the \owm corpus of varying input length to determine the optimal input token length that generates conversations of following characteristics: (1) retains all relevant information from the original context, (2) remains grounded to the source material and (3) enhances the conversation with complementary explanations and reasoning. For each sample, we generate conversations using two prompt (\tp and \ts) and observe the token length of the generations. As depicted in \autoref{fig:context_length}, with increasing input token length (X-axis), the token length of the generated conversation (Y-axis) does not scale up linearly. For example, an input context of 2K tokens results in a conversation that has 1K tokens resulting in a lot of information loss during conversion. Analyzing the \autoref{fig:context_length}, we see that the input token length of 500 can generate conversation that goes beyond 500 tokens meaning that the conversation not only retains information but also adds necessary reasoning  resulting in more tokens. 
+
+% % \begin{figure}[H]
+% %   \centering
+% %   \includesvg[width=0.8\columnwidth]{figures/context_len.svg}
+% %   \caption{With increasing context length the generated conversation length decreases!}
+% %   \label{fig:context_length}
+% % \end{figure}
+
+
+
+
+% % \subsection{Conversation Quality Assessment}\label{ss:quality_assess}
+
+% \begin{wrapfigure}[13]{r}{0.45\textwidth}
+%     \vspace{-6mm}
+%     \centering    
+%     \includesvg[width=\textwidth]{figures/quality.svg}
+%     \caption{LLM tends to rate its generation higher most of the times.}
+%   \label{fig:conv_quality}
+%   \vspace{-2mm}
+% \end{wrapfigure}
+% \paragraph{Conversation Quality Assessment.} \label{ss:quality_assess}
+% While the conversations generated by the \llm typically appear coherent, there are instances where the output fails to preserve the context or lacks grounding to the source material. In some cases, conversations may even be incomplete. Detecting poor-quality generation becomes challenging at scale. To address this, we explore two quality-filtering approaches:
+
+% \textbf{Heuristic Filtering.} We employ a simple heuristic based on token length. Given that the input context is limited to a maximum of 500 tokens and split into subcontexts of 500 tokens each to maximize information retention, we discard any generated conversations that fall below 50 tokens. This ensures that minimal information loss is detected early.
+
+% \textbf{\llm-based Scoring.} For a more comprehensive assessment, we use an \llm to score the quality of the generated conversations. We introduce four key metrics for evaluation:
+% \begin{itemize}[leftmargin=*] 
+%     \item \textbf{Correctness}: Verifies that all information, such as numbers and parameters, is accurately reflected in the conversation.
+%     \item \textbf{Faithfulness}: Ensures the conversation remains grounded in the context provided.
+%     \item \textbf{Information Preservation}: Checks whether all relevant facts and knowledge from the original context are retained in the conversation.
+%     \item \textbf{New Knowledge}: Evaluates whether the conversation introduces additional explanations, reasoning, or definitions not present in the raw input.
+% \end{itemize}
+
+% Given a raw context and its corresponding conversation, we ask $\mathcal{M}$ to rate the conversation on a scale of 1 to 5 in each of four metrics, with 1 representing poor quality and 5 representing the best possible conversation. To determine the overall quality, we compute the average score across the metrics and choose conversations with average scores more than or equal to 3. Additionally, we utilize the prompt from the FineWebEdu \citep{penedo2024finewebdatasetsdecantingweb} annotation framework to further check the correlation between two scoring approaches. In \autoref{fig:conv_quality}, we plot the scores for 140K conversations using FineWebEdu metrics and our metrics. It is clearly visible from the figure is that \llm tends to rate its own generation higher almost all the time resulting in a skewed distribution of rating. Around 96\% of conversations are labelled as high quality. % comparison between fineweb metrics and our. our is better
+
+% To further investigate, we choose 20 contexts and their corresponding conversations and manually label them on the above four metrics. We later pass these samples to \llm to obtain the quality scores. When comparing the human scores with those from the \llm, we noted discrepancies in both the scores and the reasoning behind them. Human annotators prioritized the information preservation metric, while the \llm often overlooked minor information loss. Additionally, the interpretation of ``New Knowledge" differed between humans and the \llm. Humans valued extra reasoning and explanation as forms of new knowledge, whereas the \llm assigned higher ``New Knowledge" scores to conversations containing out-of-context information that is difficult to verify. Given these differences in the results from human and \llm-based quality filtering, we use simple heuristic filtering in this study and plan to explore other approaches in the future.
+
+
+% \begin{figure}[H]
+%   \centering
+%   \includesvg[width=0.8\columnwidth]{figures/quality.svg}
+%   \caption{With increasing context length the generated conversation length decreases!}
+%   \label{fig:conv_quality}
+% \end{figure}
+
+
+
+
+
+% * DSM multilingual chinese model - > improvements span over english and chinese tasks, so not very comparable
+% * our internal result we get with their best model is worst than their published numbers, but evaluation pipeline is static
+% * generation bug with the code tasks
+
+
+
