@@ -45,11 +45,11 @@ Full generation with all prompt styles:
 
 ```bash
 python -m mind_data_pipeline.cli \
-  --output-path data/mind_conversations.jsonl \
-  --max-samples 10 \
+  --output-path data/mind_conversations_2.jsonl \
+  --max-samples 100 \
   --chunk-size 500 \
   --chunk-overlap 50 \
-  --model deepseek-r1
+  --model deepseek-v3
 ```
 
 Refer to `python -m mind_data_pipeline.cli --help` for the complete list of

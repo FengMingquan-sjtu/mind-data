@@ -7,10 +7,11 @@ from __future__ import annotations
 import os
 import random
 import time
+import asyncio
 from dataclasses import dataclass
 from typing import Optional
 
-from openai import OpenAI
+from openai import OpenAI, AsyncOpenAI
 
 DEFAULT_SYSTEM_PROMPT = (
     "You are a mathematics-focused assistant that converts raw documents into synthetic "
@@ -58,6 +59,14 @@ def create_openai_client(api_key: Optional[str], base_url: Optional[str], timeou
     return OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
 
 
+def create_async_openai_client(api_key: Optional[str], base_url: Optional[str], timeout: float) -> AsyncOpenAI:
+    if not api_key:
+        raise ValueError(
+            "API key is missing. Please set MIND_API_KEY or OPENAI_API_KEY (or pass via --api-key)."
+        )
+    return AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
+
+
 class ConversationLLM:
     """LLM wrapper that adheres to the tmp.py API usage."""
 
@@ -70,6 +79,7 @@ class ConversationLLM:
                 "API key not provided. Set MIND_API_KEY/OPENAI_API_KEY or supply --api-key."
             )
         self.client = create_openai_client(api_key, base_url, timeout=config.request_timeout)
+        self.async_client = create_async_openai_client(api_key, base_url, timeout=config.request_timeout)
 
     def _build_messages(self, instruction: str, context: str):
         user_message = (
@@ -78,7 +88,7 @@ class ConversationLLM:
             "<context>\n"
             f"{context.strip()}\n"
             "</context>\n\n"
-            "Return only the conversation with speaker tags."
+            "Return only the conversation with speaker tags. Use the same language as the context."
         )
         return [
             {"role": "system", "content": self.config.system_prompt},
@@ -107,5 +117,29 @@ class ConversationLLM:
                     break
                 sleep_for = self.config.backoff_seconds * attempt + random.random()
                 time.sleep(sleep_for)
+        raise RuntimeError("LLM generation failed.") from last_error
+
+    async def generate_async(self, instruction: str, context: str) -> str:
+        last_error: Optional[Exception] = None
+        for attempt in range(1, self.config.max_attempts + 1):
+            try:
+                response = await self.async_client.chat.completions.create(
+                    model=self.config.model,
+                    temperature=self.config.temperature,
+                    top_p=self.config.top_p,
+                    max_tokens=self.config.max_output_tokens,
+                    messages=self._build_messages(instruction, context),
+                )
+                choice = response.choices[0]
+                message = choice.message.content if choice and choice.message else None
+                if not message:
+                    raise RuntimeError("Empty response from LLM.")
+                return message.strip()
+            except Exception as exc:  # noqa: BLE001
+                last_error = exc
+                if attempt == self.config.max_attempts:
+                    break
+                sleep_for = self.config.backoff_seconds * attempt + random.random()
+                await asyncio.sleep(sleep_for)
         raise RuntimeError("LLM generation failed.") from last_error
 
