@@ -5,7 +5,7 @@ paper.
 
 ## Data generation pipeline
 
-- Loads `brando/small-open-web-math-dataset` from Hugging Face.
+- Loads the local `books_math_en_0527` parquet shards (decoded with the Qwen2 tokenizer).
 - Chunks each document into overlapping 500-token windows (default overlap 50).
 - Applies the seven conversational prompts from the paper to every chunk.
 - Calls the DirectLLM-compatible API defined in `tmp.py` to obtain conversations.
@@ -44,12 +44,13 @@ python -m mind_data_pipeline.cli \
 Full generation with all prompt styles:
 
 ```bash
-python -m mind_data_pipeline.cli \
-  --output-path data/mind_conversations_2.jsonl \
-  --max-samples 100 \
+/cpfs/user/fengmingquan/miniconda3/envs/nanogpt/bin/python -m mind_data_pipeline.cli \
+  --output-path data/mind_conversations_3.jsonl \
+  --max-samples 10 \
   --chunk-size 500 \
   --chunk-overlap 50 \
-  --model deepseek-v3
+  --model deepseek-v3 \
+  --dataset-dir /prodcpfs/user/fengmingquan/dataset/raw/books_math_cn_0527
 ```
 
 Refer to `python -m mind_data_pipeline.cli --help` for the complete list of

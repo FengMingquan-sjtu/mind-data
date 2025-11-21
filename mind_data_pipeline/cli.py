@@ -56,9 +56,22 @@ def generate_conversations(
     min_conversation_tokens: int = typer.Option(
         50, help="Discard generations whose token length is below this threshold."
     ),
-    dataset_split: str = typer.Option("train", help="Dataset split to use."),
-    streaming: bool = typer.Option(
-        False, "--streaming/--no-streaming", help="Enable Hugging Face streaming mode."
+    dataset_dir: Path = typer.Option(
+        Path("/prodcpfs/user/fengmingquan/dataset/raw/books_math_en_0527"),
+        help="Directory containing math_en_0527 parquet shards.",
+    ),
+    tokenizer_path: Path = typer.Option(
+        Path("/prodcpfs/user/fengmingquan/model/Qwen2-0.5B"),
+        help="Tokenizer checkpoint used to decode stored token IDs.",
+    ),
+    token_columns: Optional[List[str]] = typer.Option(
+        None,
+        "--token-column",
+        help="Column(s) that hold token IDs. Provide multiple times for fallbacks.",
+    ),
+    text_column: Optional[str] = typer.Option(
+        None,
+        help="Optional column that already contains raw text (used if tokens missing).",
     ),
     tokenizer_model: Optional[str] = typer.Option(
         None, help="Model name passed to tiktoken when building the tokenizer."
@@ -88,7 +101,7 @@ def generate_conversations(
     log_level: str = typer.Option("INFO", help="Python logging level (e.g., INFO, DEBUG)."),
 ):
     """
-    Generate synthetic math-focused conversations from brando/small-open-web-math-dataset.
+    Generate synthetic math-focused conversations from the local math_en_0527 corpus.
     """
 
     load_dotenv()
@@ -99,12 +112,17 @@ def generate_conversations(
 
     prompts_to_use = _build_prompts(prompts)
 
+    dataset_kwargs = {
+        "dataset_dir": str(dataset_dir),
+        "tokenizer_path": str(tokenizer_path),
+        "max_samples": max_samples,
+        "text_column": text_column,
+    }
+    if token_columns:
+        dataset_kwargs["token_columns"] = token_columns
+
     pipeline_config = PipelineConfig(
-        dataset=DatasetConfig(
-            split=dataset_split,
-            streaming=streaming,
-            max_samples=max_samples,
-        ),
+        dataset=DatasetConfig(**dataset_kwargs),
         chunker=ChunkerConfig(chunk_size=chunk_size, overlap=chunk_overlap),
         min_conversation_tokens=min_conversation_tokens,
         tokenizer_model=tokenizer_model,
